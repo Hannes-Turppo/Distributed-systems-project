@@ -2,19 +2,26 @@
 from InquirerPy import inquirer
 from InquirerPy.base.control import Choice
 import socket
-import threading
 
 class Client:
 
     def __init__(self, HOST, PORT):
-        self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.socket.connect((HOST, PORT))
-        self.name = inquirer.text(message='What is your name?').execute()
-        self.connectServer()
-        self.Menu()
 
-    def connectServer(self):
-        threading.Thread(target=self.receive_msg).start()
+        self.name = inquirer.text(message='What is your name?').execute()
+
+        self.client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        try:
+            self.client_socket.connect((HOST, PORT))
+            self.client_socket.send(self.name.encode())
+            self.client_socket.recv(1024)
+        except ConnectionRefusedError:
+            print("Error connecting server.")
+        except Exception as err:
+            print(err)
+
+
+        
+        self.Menu()
 
 
     def Menu(self):
@@ -73,4 +80,4 @@ class Client:
 
 
 if __name__ == '__main__':
-    Client('localhost', 6379)
+    Client('localhost', 12347)
