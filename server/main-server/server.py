@@ -1,3 +1,4 @@
+import xmlrpc.client
 import socket
 import threading
 import json
@@ -19,8 +20,15 @@ class RedisCache:
     except Exception as e:
       print(f"Error initializing redis connection: {e}")
 
-# set_topic and get_topic are meant to have a stored state of the chatroom.
-  def set_topic(self, topicName, content):
+
+# pull old content from database to cache
+  def populate_cache(self):
+    storage_proxy.get_data()
+    return
+
+
+# set_topic to redis cache for fast acces for new joiners and store into permanent storage.
+  def set_topic(self, storage, topicName, content):
     try:
       self.redis.set(topicName, content)
       return True
@@ -75,6 +83,7 @@ locking = threading.Lock()
 clients = {}  # Dict: k: username, v: socket connection
 topics = {}   # Dict: k: topicname, v: list of messages
 cache = RedisCache()
+storage_proxy = xmlrpc.client.ServerProxy("http://localhost:8000/")
 
 
 # Handle commands from stdin.
@@ -117,11 +126,14 @@ def handle_client_request(userName, conn, cache, message):
     command = json.loads(message)
     action = command.get("action")
 
+
     # Topic functionality
     if action == "list_topics":
       groups = list(cache.keys()) # Get all current channels from Redis and return them to client
       conn.sendall(json.dumps({"topics": groups}).encode())
 
+
+    # create a new topic
     if action == "create_Topic":
       name = command.get("Topic_name")
 
@@ -133,6 +145,8 @@ def handle_client_request(userName, conn, cache, message):
         conn.sendall(json.dumps({"status": "created", "Topic_name": name}).encode())
         print(f"Topic '{name}' created by {userName}")
 
+
+    # Join existing topic
     if action == "join_Topic":
       name = command.get("Topic_name")
       Topic = topics.get(name)
@@ -153,6 +167,8 @@ def handle_client_request(userName, conn, cache, message):
       conn.sendall(response.encode())
       print(f"{userName} joined Topic '{name}'")
 
+
+    # Send a message to existing topic
     if action == "send_Topic_message":
       Topic_name = command.get("Topic_name")
       msg = command.get("message")
@@ -183,6 +199,7 @@ def handle_client_request(userName, conn, cache, message):
               print(f"Failed to send message to {member}: {e}")
 
 
+    # Exit a topic's subscriber list
     if action == "leave_Topic":
       Topic_name = command.get("Topic_name")
       Topic = topics.get(Topic_name)
@@ -191,9 +208,12 @@ def handle_client_request(userName, conn, cache, message):
         print(f"{userName} left Topic '{Topic_name}'")
       conn.sendall(b"Left Topic")
 
+
+    # Use news microservice to search news by keyword
     if action == "search_news":
       keyword = command.get("keyword")
       handle_news(keyword)
+
 
   except Exception as error:
     conn.sendall(b"Internal server error.")
@@ -286,6 +306,8 @@ def server():
   PORT = 12347
 
   define_socket(hostname, ip, PORT)
+
+  # populate cache from storage:
 
 
 
