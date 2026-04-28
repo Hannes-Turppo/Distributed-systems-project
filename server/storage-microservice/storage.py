@@ -35,17 +35,18 @@ def connect():
         db_version = cursor.fetchone()
         print(db_version)
 
-        return cursor
+        return [conn, cursor]
     except (Exception, psycopg2.DatabaseError) as error:
         print(error)
 
-def set_data(cur, data):
-  for line in data:
+def set_data(cur, topics):
+  for topic in topics:
+    name = topic.key()
     pass
   return
 
 def get_data(cur):
-  data = cur.execute('SELECT * FROM topics')
+  data = cur.execute('SELECT * FROM messages')
   return data
 
 # Disconnect from PostgreSQL
@@ -59,7 +60,7 @@ def disconnect(conn, cursor):
 
 
 if __name__ == '__main__':
-  cursor = connect()
+  [db, cursor] = connect()
   # define server
   server = ThreadingXMLRPCServer(("localhost", 8000))
 

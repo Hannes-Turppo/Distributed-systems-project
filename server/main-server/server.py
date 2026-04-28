@@ -7,6 +7,8 @@ import json
 import time
 
 
+
+# Redis cache handling
 class RedisCache:
   def __init__(self, host='localhost', port=6379, db=0, forward_callback=None):
     try:
@@ -14,8 +16,8 @@ class RedisCache:
       self.redis = Redis(host=host, port=port, db=db, decode_responses=True)
       self._stop_event = threading.Event()
 
-      # populate with data from storage (unfinished)
-      # CODE TO HANDLE STORAGE LOADING HERE
+      # populate with data from storage
+      self.populate_cache()
 
     except Exception as e:
       print(f"Error initializing redis connection: {e}")
@@ -23,7 +25,11 @@ class RedisCache:
 
 # pull old content from database to cache
   def populate_cache(self):
-    storage_proxy.get_data()
+    old_data = storage_proxy.get_data()
+    print(old_data)
+    keys = old_data.keys()
+    for topic in keys:
+      self.redis.set(topic.name, topic.messages)
     return
 
 
@@ -31,12 +37,14 @@ class RedisCache:
   def set_topic(self, storage, topicName, content):
     try:
       self.redis.set(topicName, content)
+      storage_proxy.set_data(topics)
       return True
     except Exception as e:
       print(f"Error while setting topic: {e}")
       return False
 
-# when client connects, get old messages from redis
+
+# when client connects to topic, get old messages from redis
   def get_topic(self, topicName):
     try:
       topic = self.redis.get(topicName)
@@ -76,14 +84,6 @@ class Topic:
       self.members.append(username)
     return True
 
-
-# Server state
-running = True
-locking = threading.Lock()
-clients = {}  # Dict: k: username, v: socket connection
-topics = {}   # Dict: k: topicname, v: list of messages
-cache = RedisCache()
-storage_proxy = xmlrpc.client.ServerProxy("http://localhost:8000/")
 
 
 # Handle commands from stdin.
@@ -222,7 +222,6 @@ def handle_client_request(userName, conn, cache, message):
 
 
 
-
 # main handler for client connections
 def handle_client(conn, addr):
   global running
@@ -298,6 +297,16 @@ def define_socket(hostname, ip, PORT):
         continue
 
 
+# Server state
+running = True
+locking = threading.Lock()
+clients = {}  # Dict: k: username, v: socket connection
+topics = {}   # Dict: k: topicname, v: list of messages
+cache = RedisCache()
+storage_proxy = xmlrpc.client.ServerProxy("http://localhost:8000/")
+
+
+
 # main server 
 def server():
   # host options
@@ -307,7 +316,6 @@ def server():
 
   define_socket(hostname, ip, PORT)
 
-  # populate cache from storage:
 
 
 
