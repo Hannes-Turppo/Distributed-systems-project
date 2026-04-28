@@ -1,0 +1,7 @@
+{
+  "python.defaultInterpreterPath": "/home/hannesturppo/Documents/School/2025-2026/P3/DS/Distributed-systems-project/.venv/bin/python",
+  "python.analysis.extraPaths": [
+    "/home/hannesturppo/Documents/School/2025-2026/P3/DS/Distributed-systems-project/.venv/lib/python3.14/site-packages",
+    "/home/hannesturppo/Documents/School/2025-2026/P3/DS/Distributed-systems-project/.venv/lib64/python3.14/site-packages"
+  ]
+}
