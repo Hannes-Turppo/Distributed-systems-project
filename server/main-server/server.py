@@ -241,7 +241,7 @@ def handle_client(conn, addr):
         print(f'User {userName} connected @ {addr[0]}, {addr[1]}')
       else:
         conn.sendall(b"Username already in use.")
-        return  # Added: Don't continue if username is taken
+        return  # Don't continue if username is taken
 
     while running:
       # connection functionality
