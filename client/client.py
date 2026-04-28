@@ -1,12 +1,20 @@
 
 from InquirerPy import inquirer
 from InquirerPy.base.control import Choice
+import socket
+import threading
 
 class Client:
 
-    def __init__(self):
+    def __init__(self, HOST, PORT):
+        self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.socket.connect((HOST, PORT))
         self.name = inquirer.text(message='What is your name?').execute()
+        self.connectServer()
         self.Menu()
+
+    def connectServer(self):
+        threading.Thread(target=self.receive_msg).start()
 
 
     def Menu(self):
@@ -65,4 +73,4 @@ class Client:
 
 
 if __name__ == '__main__':
-    Client()
+    Client('localhost', 6379)
