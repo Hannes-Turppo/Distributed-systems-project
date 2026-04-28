@@ -23,6 +23,11 @@ with SimpleXMLRPCServer(('localhost', 8000),
         response = requests.get(url)
         content = response.json()
 
+        if content['status'] == 'error':
+            print(content['code'])
+
+            return 'Error: unable to get news.'
+
         newslist = []
 
         for article in content['articles']:
@@ -32,15 +37,16 @@ with SimpleXMLRPCServer(('localhost', 8000),
             time = article['publishedAt']
 
             news = {
-                  "source": name,
-                  "title": title,
-                  "description": description,
-                  "publishTime": time
+                "source": name,
+                "title": title,
+                "description": description,
+                "publishTime": time
             }
-            
+                
             newslist.append(json.dumps(news))
 
         return newslist
+
 
     server.register_function(getNews, 'getNews')
 
