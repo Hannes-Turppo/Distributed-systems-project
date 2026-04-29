@@ -106,19 +106,61 @@ class Client:
         }).encode())
 
         response = self.client_socket.recv(4096).decode()
-        print(response)
 
-        self.client_socket.sendall(json.dumps({
-            "action": "join_topic",
-            "topic_name": new_subject
-        }).encode())
+        data = json.loads(response)
 
-        join_response = json.loads(self.client_socket.recv(4096).decode())
-        print(join_response)
+        if 'error' in response:
+            print('Error while receiving news')
+            return
+        else:
+            choices = [
+                Choice(
+                    value=article,
+                    name=f"Source: {article['source']}\nTitle: {article['title']}"
+                )
+                for article in data
+            ]
 
-        self.current_topic = new_subject
-        self.openChatRoom()
+            choices.append(Choice(value=None, name='Return main menu'))
 
+            while True:
+
+                select_article = inquirer.select(
+                    message="Select article of your topic",
+                    choices=choices,
+                    default=1
+                ).execute()
+
+                if select_article is None:
+                    return
+                else:
+                    print(select_article)
+
+                    selected_article = inquirer.select(
+                        message=f"Source {select_article['source']}\
+                            Title: {select_article['title']}\
+                                Publish time: {select_article['publishTime']}\
+                                    Description: {select_article['description']}",
+                                    choices=[
+                                        'Open chat room',
+                                        Choice(value=None, name='Return article list')
+                                    ],
+                                    default=1
+                    ).execute()
+
+                    if selected_article is None:
+                        break
+                    else:
+                        self.client_socket.sendall(json.dumps({
+                        "action": "create_topic",
+                        "topic_name": new_subject
+                        }).encode())
+
+                        join_response = json.loads(self.client_socket.recv(4096).decode())
+                        print(join_response)
+
+                        self.current_topic = new_subject
+                        self.openChatRoom()
 
     def openChatRoom(self):
         threading.Thread(target=self.receiveMessage).start()
@@ -182,6 +224,8 @@ class Client:
 
         response = self.client_socket.recv(4096).decode()
         print(response)
+
+        return
 
 if __name__ == '__main__':
     Client('localhost', 12347)
