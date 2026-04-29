@@ -86,7 +86,7 @@ class Topic:
 
 
 
-# Handle commands from stdin.
+# Handle commands from stdin on the server.
 def commands(server):
   global running # Use global variable
   while running:
@@ -101,7 +101,7 @@ def commands(server):
         running = False
         server.close()
       else:
-         print("Unknown command. Try again or type \"/h\" for help")
+         print("Unknown command. Try again or type \"/h\" for help\n")
     except EOFError:
       break
     except Exception as error:
@@ -110,8 +110,9 @@ def commands(server):
 
 # handle RPC calls to NewsServer
 def handle_news(keyword):
-  # code goes here
-  return
+  with xmlrpc.client.ServerProxy("http://localhost:8000/RPC2") as proxy:
+    news = proxy.getNews(keyword)
+  return news
 
 
 # function to handle incoming client requests
@@ -121,7 +122,8 @@ def handle_news(keyword):
 # "join_topic"
 # "send_topic_message"
 # "leave_topic"
-def handle_client_request(userName, conn, cache, message):
+# "search_news"
+def handle_client_request(userName, conn, message):
   try:
     command = json.loads(message)
     action = command.get("action")
@@ -129,69 +131,69 @@ def handle_client_request(userName, conn, cache, message):
 
     # Topic functionality
     if action == "list_topics":
-      groups = list(cache.keys()) # Get all current channels from Redis and return them to client
+      groups = list(topics.keys()) # Get all current channels and return them to client
       conn.sendall(json.dumps({"topics": groups}).encode())
 
 
     # create a new topic
-    if action == "create_Topic":
-      name = command.get("Topic_name")
+    if action == "create_topic":
+      name = command.get("topic_name")
 
       if name in topics:
         conn.sendall(b"Error: Topic already exists.")
       else:
         topics[name] = Topic(name)
         topics[name].add_member(userName)
-        conn.sendall(json.dumps({"status": "created", "Topic_name": name}).encode())
+        conn.sendall(json.dumps({"status": "created", "topic_name": name}).encode())
         print(f"Topic '{name}' created by {userName}")
 
 
     # Join existing topic
-    if action == "join_Topic":
-      name = command.get("Topic_name")
-      Topic = topics.get(name)
-      if not Topic:
+    if action == "join_topic":
+      name = command.get("topic_name")
+      topic = topics.get(name)
+      if not topic:
         conn.sendall(json.dumps({"status": "error", "message": "Topic not found"}).encode())
         return
       
-      # Add user to Topic members
-      Topic.add_member(userName)
+      # Add user to topic members
+      topic.add_member(userName)
 
-      # Send Topic history
+      # Send topic history
       response = json.dumps({
         "status": "joined",
-        "Topic_name": name,
-        "messages": Topic.get_messages(),
-        "members": Topic.members
+        "topic_name": name,
+        "messages": topic.get_messages(),
+        "members": topic.members
       })
       conn.sendall(response.encode())
-      print(f"{userName} joined Topic '{name}'")
+      print(f"{userName} joined topic '{name}'")
 
 
     # Send a message to existing topic
-    if action == "send_Topic_message":
-      Topic_name = command.get("Topic_name")
+    if action == "send_topic_message":
+      topic_name = command.get("topic_name")
       msg = command.get("message")
       
-      Topic = topics.get(Topic_name)
-      if not Topic:
+      topic = topics.get(topic_name)
+      if not topic:
         conn.sendall(b"Error: Topic not found.")
         return
       
-      # Add message to Topic history
-      Topic.add_message(userName, msg)
-      cache.set_topic(Topic_name, Topic)
+      # Add message to topic history
+      topic.add_message(userName, msg)
+      cache.set_topic(topic_name, topic)
 
-      # Broadcast to all Topic members
+      # Broadcast to all topic members
       message_data = json.dumps({
-        "type": "Topic_message",
-        "Topic_name": Topic_name,
+        "type": "topic_message",
+        "topic_name": topic_name,
         "from": userName,
         "message": msg
       })
       
       with locking:
-        for member in Topic.members:
+        for member in topic.members:
           if member in clients and member != userName:
             try:
               clients[member].sendall(message_data.encode())
@@ -200,19 +202,20 @@ def handle_client_request(userName, conn, cache, message):
 
 
     # Exit a topic's subscriber list
-    if action == "leave_Topic":
-      Topic_name = command.get("Topic_name")
-      Topic = topics.get(Topic_name)
-      if Topic and userName in Topic.members:
-        Topic.members.remove(userName)
-        print(f"{userName} left Topic '{Topic_name}'")
-      conn.sendall(b"Left Topic")
+    if action == "leave_topic":
+      topic_name = command.get("topic_name")
+      topic = topics.get(topic_name)
+      if topic and userName in topic.members:
+        topic.members.remove(userName)
+        print(f"{userName} left topic '{topic_name}'")
+      conn.sendall(b"Left topic")
 
 
     # Use news microservice to search news by keyword
     if action == "search_news":
-      keyword = command.get("keyword")
-      handle_news(keyword)
+      keyword = command.get("topic_name")
+      news = handle_news(keyword)
+      conn.sendall(json.dumps(news).encode())
 
 
   except Exception as error:
@@ -245,16 +248,16 @@ def handle_client(conn, addr):
 
     while running:
       # connection functionality
-      data = conn.recv(1024)
-      if not data:
+      request = conn.recv(1024)
+      if not request:
         with locking:  # Added lock
           if userName in clients:
             del clients[userName]
         print(f"User {userName} disconnected.")
         break
 
-      msg = data.decode().strip()
-      handle_client_request(userName, conn, msg)
+      message = request.decode().strip()
+      handle_client_request(userName, conn, message)
 
   except (ConnectionResetError, BrokenPipeError) as error:
     print(f"Connection error from {addr}: {error}")
@@ -303,7 +306,7 @@ locking = threading.Lock()
 clients = {}  # Dict: k: username, v: socket connection
 topics = {}   # Dict: k: topicname, v: list of messages
 cache = RedisCache()
-storage_proxy = xmlrpc.client.ServerProxy("http://localhost:8000/")
+storage_proxy = xmlrpc.client.ServerProxy("http://localhost:8080/")
 
 
 

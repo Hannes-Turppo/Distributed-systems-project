@@ -60,9 +60,10 @@ def disconnect(conn, cursor):
 
 
 if __name__ == '__main__':
+  # PostgreSQL connection
   [db, cursor] = connect()
   # define server
-  server = ThreadingXMLRPCServer(("localhost", 8000))
+  server = ThreadingXMLRPCServer(("localhost", 8080))
 
   # server functions
   server.register_function(get_data(cursor), "get_data")

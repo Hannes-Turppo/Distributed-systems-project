@@ -64,8 +64,8 @@ class Client:
                 break
             
             self.client_socket.sendall(json.dumps({
-                "action": "join_Topic",
-                "Topic_name": topic
+                "action": "join_topic",
+                "topic_name": topic
             }).encode())
 
             response = self.client_socket.recv(4096).decode()
@@ -100,20 +100,20 @@ class Client:
         new_subject = inquirer.text(message='Find new subject').execute()                
 
         self.client_socket.sendall(json.dumps({
-            "action": "create_Topic",
-            "Topic_name": new_subject
+            "action": "search_news",
+            "topic_name": new_subject
         }).encode())
 
         response = self.client_socket.recv(4096).decode()
         print(response)
 
-        self.client_socket.sendall(json.dumbs({
-            "action": "join_Topic",
-            "Topic_name": new_subject
+        self.client_socket.sendall(json.dumps({
+            "action": "join_topic",
+            "topic_name": new_subject
         }).encode())
 
         join_response = json.loads(self.client_socket.recv(4096).decode())
-        print("Joined: " +  join_response)
+        print(join_response)
 
         self.current_topic = new_subject
         self.openChatRoom()
@@ -148,8 +148,8 @@ class Client:
 
 
         self.client_socket.sendall(json.dumps({
-            "action": "send_Topic_message",
-            "Topic_name": self.current_topic,
+            "action": "send_topic_message",
+            "topic_name": self.current_topic,
             "message": message
         }).encode())
 
@@ -164,9 +164,9 @@ class Client:
 
                 message = json.loads(data.decode())
 
-                if message.get("type") == "Topic_message":
+                if message.get("type") == "topic_message":
                     print(
-                        f"\n[{message['Topic_name']}] "
+                        f"\n[{message['topic_name']}] "
                         f"{message['from']}: {message['message']}"
                     )
             except:
@@ -174,8 +174,8 @@ class Client:
 
     def leaveTopic(self):
         self.client_socket.sendall(json.dumps({
-            "action": "leave_Topic",
-            "Topic_name": self.current_topic
+            "action": "leave_topic",
+            "topic_name": self.current_topic
         }).encode())
 
         response = self.client_socket.recv(4096).decode()
