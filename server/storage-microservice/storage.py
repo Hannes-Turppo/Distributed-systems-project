@@ -64,7 +64,7 @@ def set_message(cur, conn, message):
     return True
   except Exception as e:
     print(f"Error inserting message: {e}")
-    return False
+    return e
 
 
 # get all messages from DB and return the to the main server as 

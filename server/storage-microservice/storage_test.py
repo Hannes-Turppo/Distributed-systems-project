@@ -8,12 +8,13 @@ storage_proxy = xmlrpc.client.ServerProxy("http://localhost:8080/")
 def insert_message(topic_name, username, msg):
   timestamp = datetime.now(timezone.utc)
 
-  storage_proxy.set_message({
+  res = storage_proxy.set_message({
     "timestamp": timestamp.isoformat(),
     "topic_name": topic_name,
     "username": username,
     "message": msg
   })
+  return res
 
 
 def get_topics(target):
@@ -43,5 +44,6 @@ def get_topics(target):
 
 
 if __name__=="__main__":
-  # insert_message()
-  get_topics("")
+  # print(insert_message(topic_name="good", username="kerttu", msg="ahneella on paskainen loppu"))
+  # get_topics("")
+  pass

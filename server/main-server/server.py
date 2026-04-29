@@ -186,12 +186,14 @@ def handle_client_request(username, conn, message):
 
       # Add message to server memory and persistent message history
       topic.add_message(timestamp, username, msg)
-      storage_proxy.set_message({
+      res = storage_proxy.set_message({
         "timestamp": timestamp.isoformat(),
         "topic_name": topic_name,
         "username": username,
         "message": msg
       })
+      if res is not True:
+        print(f"Microservice error while saving message: {res}")
 
       # Broadcast to all topic members
       message_data = json.dumps({
