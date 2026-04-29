@@ -13,4 +13,4 @@ password=[your PostgreSQL user password]
 port=[the port your DB is running on. PgSQL default is 5432]
 ```
 
-1. Now when you run the microservice as storage.py, you should have a working connection to PostgreSQL 
+Now when you run the microservice as storage.py, you should have a working connection to PostgreSQL 
