@@ -309,7 +309,7 @@ def define_socket(hostname, ip, PORT):
         raise
       except Exception as error:
         print(f"Server error: {error}")
-        continue
+
 
 
 # Server state
@@ -328,8 +328,13 @@ def server():
   hostname = socket.gethostname()
   ip=socket.gethostbyname(hostname)
   PORT = 12347
-  global topics = storage_proxy.get_messages()
 
+  global topics
+  try:
+    topics = storage_proxy.get_messages()
+  except Exception as e:
+    print(f"Warning: failed to load topics from storage proxy: {e}")
+    topics = {}
   define_socket(hostname, ip, PORT)
 
 
