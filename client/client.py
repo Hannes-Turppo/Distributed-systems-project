@@ -41,6 +41,7 @@ class Client:
             elif main_menu == 'Open subjects':
                 self.OpenSubjects()
             else:
+                self.client_socket.close()
                 break
 
     def OpenSubjects(self):
@@ -124,6 +125,7 @@ class Client:
 
         while True:
             chat = inquirer.select(
+                message='Chat options',
                 choices=[
                     'Send message',
                     'Stop following topic',

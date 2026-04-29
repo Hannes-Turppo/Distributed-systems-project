@@ -2,59 +2,60 @@ import xmlrpc.client
 import socket
 import threading
 import json
-from redis import Redis
+# from redis import Redis
 import json
 import time
+from datetime import datetime, timezone
 
 
 
-# Redis cache handling
-class RedisCache:
-  def __init__(self, host='localhost', port=6379, db=0, forward_callback=None):
-    try:
-      # init redis components
-      self.redis = Redis(host=host, port=port, db=db, decode_responses=True)
-      self._stop_event = threading.Event()
+# # Redis cache handling. no functionality provided and abandonet due to complexity
+# class RedisCache:
+#   def __init__(self, host='localhost', port=6379, db=0, forward_callback=None):
+#     try:
+#       # init redis components
+#       self.redis = Redis(host=host, port=port, db=db, decode_responses=True)
+#       self._stop_event = threading.Event()
 
-      # populate with data from storage
-      self.populate_cache()
+#       # populate with data from storage
+#       self.populate_cache()
 
-    except Exception as e:
-      print(f"Error initializing redis connection: {e}")
-
-
-# pull old content from database to cache
-  def populate_cache(self):
-    old_data = storage_proxy.get_data()
-    print(old_data)
-    keys = old_data.keys()
-    for topic in keys:
-      self.redis.set(topic.name, topic.messages)
-    return
+#     except Exception as e:
+#       print(f"Error initializing redis connection: {e}")
 
 
-# set_topic to redis cache for fast acces for new joiners and store into permanent storage.
-  def set_topic(self, storage, topicName, content):
-    try:
-      self.redis.set(topicName, content)
-      storage_proxy.set_data(topics)
-      return True
-    except Exception as e:
-      print(f"Error while setting topic: {e}")
-      return False
+# # pull old content from database to cache
+#   def populate_cache(self):
+#     old_data = storage_proxy.get_data()
+#     print(old_data)
+#     keys = old_data.keys()
+#     for topic in keys:
+#       self.redis.set(topic.name, topic.messages)
+#     return
 
 
-# when client connects to topic, get old messages from redis
-  def get_topic(self, topicName):
-    try:
-      topic = self.redis.get(topicName)
-      if not topic:
-        return False
-      else:
-        return topic
-    except Exception as e:
-      print(f"Error while getting topic from Redis: {e}")
-      return False
+# # set_topic to redis cache for fast acces for new joiners and store into permanent storage.
+#   def set_topic(self, storage, topicName, content):
+#     try:
+#       self.redis.set(topicName, content)
+#       storage_proxy.set_data(topics)
+#       return True
+#     except Exception as e:
+#       print(f"Error while setting topic: {e}")
+#       return False
+
+
+# # when client connects to topic, get old messages from redis
+#   def get_topic(self, topicName):
+#     try:
+#       topic = self.redis.get(topicName)
+#       if not topic:
+#         return False
+#       else:
+#         return topic
+#     except Exception as e:
+#       print(f"Error while getting topic from Redis: {e}")
+#       return False
   
 
 class Topic:
@@ -63,11 +64,10 @@ class Topic:
     self.messages = [] # List of messages in given topic
     self.members = [] # List of socket connections in the chatroom
 
-  def add_message(self, username, message):
+  def add_message(self, username, message, timestamp):
     try:
-      timestamp = time.time()
       self.messages.append({
-        "from": username,
+        "username": username,
         "message": message,
         "timestamp": timestamp
       })
@@ -172,26 +172,35 @@ def handle_client_request(userName, conn, message):
 
     # Send a message to existing topic
     if action == "send_topic_message":
+
+      # form message data
       topic_name = command.get("topic_name")
       msg = command.get("message")
-      
+      timestamp = datetime.now(timezone.utc)
+
+      # find topic
       topic = topics.get(topic_name)
       if not topic:
         conn.sendall(b"Error: Topic not found.")
         return
-      
-      # Add message to topic history
-      topic.add_message(userName, msg)
-      cache.set_topic(topic_name, topic)
+
+      # Add message to persistent message history
+      topic.add_message(userName, msg, timestamp)
+      storage_proxy.set_message(message = {
+        "timestamp": timestamp,
+        "topic": topic_name,
+        "username": userName,
+        "message": msg
+      })
 
       # Broadcast to all topic members
       message_data = json.dumps({
         "type": "topic_message",
+        "timestamp": timestamp,
         "topic_name": topic_name,
-        "from": userName,
+        "username": userName,
         "message": msg
       })
-      
       with locking:
         for member in topic.members:
           if member in clients and member != userName:
@@ -199,6 +208,8 @@ def handle_client_request(userName, conn, message):
               clients[member].sendall(message_data.encode())
             except Exception as e:
               print(f"Failed to send message to {member}: {e}")
+          else:
+            print(f"Error sending message to {member}: client not found.")
 
 
     # Exit a topic's subscriber list
@@ -268,6 +279,7 @@ def handle_client(conn, addr):
     print(f"Cleaned up connection for {userName}")
 
 
+
 # define socket. creates a listening socket and handles incoming connections
 def define_socket(hostname, ip, PORT):
   global running
@@ -305,7 +317,7 @@ running = True
 locking = threading.Lock()
 clients = {}  # Dict: k: username, v: socket connection
 topics = {}   # Dict: k: topicname, v: list of messages
-cache = RedisCache()
+# cache = RedisCache()
 storage_proxy = xmlrpc.client.ServerProxy("http://localhost:8080/")
 
 
@@ -316,6 +328,7 @@ def server():
   hostname = socket.gethostname()
   ip=socket.gethostbyname(hostname)
   PORT = 12347
+  global topics = storage_proxy.get_messages()
 
   define_socket(hostname, ip, PORT)
 

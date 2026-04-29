@@ -4,7 +4,6 @@ from config import config
 from xmlrpc.server import SimpleXMLRPCServer
 from socketserver import ThreadingMixIn
 from threading import Lock
-import json
 
 
 class ThreadingXMLRPCServer(ThreadingMixIn, SimpleXMLRPCServer):
@@ -39,14 +38,40 @@ def connect():
     except (Exception, psycopg2.DatabaseError) as error:
         print(error)
 
-def set_data(cur, topics):
-  for topic in topics:
-    name = topic.key()
-    pass
+
+def create_table(cur):
+  cur.execute("""
+    CREATE TABLE IF NOT EXISTS messages (
+      id SERIAL PRIMARY KEY,
+      timestamp TIMESTAMP DEFAULT NOW(),
+      topic_name VARCHAR(255),
+      username VARCHAR(255),
+      message TEXT
+    )
+  """)
   return
 
-def get_data(cur):
-  data = cur.execute('SELECT * FROM messages')
+
+# Write all new messages into DB so they can be fetched on server startup
+def set_message(cur, conn, message):
+  try:
+    cur.execute(
+        "INSERT INTO messages (timestamp, topic_name, username, message) VALUES (%s, %s, %s, %s)",
+        (message.get("timestamp"), message.get("topic_name"), message.get("username"), message.get("message"))
+    )
+    conn.commit()
+    return True
+  except Exception as e:
+    print(f"Error inserting message: {e}")
+    return False
+
+
+# get all messages from DB and return the to the main server as 
+# dict of topics as keys and other data as values
+def get_messages(cur):
+  cur.execute('SELECT * FROM messages')
+  data = cur.fetchall()
+  print(data) # Needs to be completed to return topics to server.
   return data
 
 # Disconnect from PostgreSQL
@@ -62,14 +87,17 @@ def disconnect(conn, cursor):
 if __name__ == '__main__':
   # PostgreSQL connection
   [db, cursor] = connect()
+  create_table()
+  db.commit()
+
   # define server
   server = ThreadingXMLRPCServer(("localhost", 8080))
 
   # server functions
-  server.register_function(get_data(cursor), "get_data")
-  server.register_function(set_data(cursor), "set_data")
+  server.register_function(lambda: get_messages(cursor), "get_messages")
+  server.register_function(lambda message: set_message(cursor, db, message), "set_message") # gets message from main server.
 
   # serve
-  print("Listening on port 8000...")
+  print("Listening on port 8080...")
   server.serve_forever()
   disconnect(db, cursor)
