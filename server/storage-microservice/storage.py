@@ -11,7 +11,7 @@ class ThreadingXMLRPCServer(ThreadingMixIn, SimpleXMLRPCServer):
   daemon_threads = True
   allow_reuse_address = True
 
-
+ 
 # connect to PostgreSQL and return connection
 def connect():
     """ Connect to the PostgreSQL database server """
