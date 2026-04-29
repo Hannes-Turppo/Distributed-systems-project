@@ -23,27 +23,21 @@ with SimpleXMLRPCServer(('localhost', 8000),
         response = requests.get(url)
         content = response.json()
 
-        if content['status'] == 'error':
-            print(content['code'])
-
+        
+        if content.get('status') == 'error':
+            print(content.get('code'))
             return 'Error: unable to get news.'
+
 
         newslist = []
 
-        for article in content['articles']:
-            name = article['source']['name']
-            title = article['title']
-            description = article['description']
-            time = article['publishedAt']
-
-            news = {
-                "source": name,
-                "title": title,
-                "description": description,
-                "publishTime": time
-            }
-                
-            newslist.append(json.dumps(news))
+        for article in content.get('articles', []):
+            newslist.append({
+                "source": article['source']['name'],
+                "title": article['title'],
+                "description": article['description'],
+                "publishTime": article['publishedAt']
+            })
 
         return newslist
 
