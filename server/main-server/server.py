@@ -64,7 +64,7 @@ class Topic:
     self.messages = [] # List of messages in given topic
     self.members = [] # List of socket connections in the chatroom
 
-  def add_message(self, username, message, timestamp):
+  def add_message(self, timestamp, username, message):
     try:
       self.messages.append({
         "username": username,
@@ -123,7 +123,7 @@ def handle_news(keyword):
 # "send_topic_message"
 # "leave_topic"
 # "search_news"
-def handle_client_request(userName, conn, message):
+def handle_client_request(username, conn, message):
   try:
     command = json.loads(message)
     action = command.get("action")
@@ -143,9 +143,9 @@ def handle_client_request(userName, conn, message):
         conn.sendall(b"Error: Topic already exists.")
       else:
         topics[name] = Topic(name)
-        topics[name].add_member(userName)
+        topics[name].add_member(username)
         conn.sendall(json.dumps({"status": "created", "topic_name": name}).encode())
-        print(f"Topic '{name}' created by {userName}")
+        print(f"Topic '{name}' created by {username}")
 
 
     # Join existing topic
@@ -157,7 +157,7 @@ def handle_client_request(userName, conn, message):
         return
       
       # Add user to topic members
-      topic.add_member(userName)
+      topic.add_member(username)
 
       # Send topic history
       response = json.dumps({
@@ -167,7 +167,7 @@ def handle_client_request(userName, conn, message):
         "members": topic.members
       })
       conn.sendall(response.encode())
-      print(f"{userName} joined topic '{name}'")
+      print(f"{username} joined topic '{name}'")
 
 
     # Send a message to existing topic
@@ -184,12 +184,12 @@ def handle_client_request(userName, conn, message):
         conn.sendall(b"Error: Topic not found.")
         return
 
-      # Add message to persistent message history
-      topic.add_message(userName, msg, timestamp)
-      storage_proxy.set_message(message = {
-        "timestamp": timestamp,
-        "topic": topic_name,
-        "username": userName,
+      # Add message to server memory and persistent message history
+      topic.add_message(timestamp, username, msg)
+      storage_proxy.set_message({
+        "timestamp": timestamp.isoformat(),
+        "topic_name": topic_name,
+        "username": username,
         "message": msg
       })
 
@@ -198,12 +198,12 @@ def handle_client_request(userName, conn, message):
         "type": "topic_message",
         "timestamp": timestamp,
         "topic_name": topic_name,
-        "username": userName,
+        "username": username,
         "message": msg
       })
       with locking:
         for member in topic.members:
-          if member in clients and member != userName:
+          if member in clients and member != username:
             try:
               clients[member].sendall(message_data.encode())
             except Exception as e:
@@ -216,9 +216,9 @@ def handle_client_request(userName, conn, message):
     if action == "leave_topic":
       topic_name = command.get("topic_name")
       topic = topics.get(topic_name)
-      if topic and userName in topic.members:
-        topic.members.remove(userName)
-        print(f"{userName} left topic '{topic_name}'")
+      if topic and username in topic.members:
+        topic.members.remove(username)
+        print(f"{username} left topic '{topic_name}'")
       conn.sendall(b"Left topic")
 
 
@@ -239,20 +239,20 @@ def handle_client_request(userName, conn, message):
 # main handler for client connections
 def handle_client(conn, addr):
   global running
-  userName = None
+  username = None
 
   try:
     data = conn.recv(1024)
     if not data:
       return
-    userName = data.decode().strip()
+    username = data.decode().strip()
 
     # connect user to socket
     with locking:
-      if userName not in clients:
-        clients[userName] = conn
+      if username not in clients:
+        clients[username] = conn
         conn.send(b"OK")
-        print(f'User {userName} connected @ {addr[0]}, {addr[1]}')
+        print(f'User {username} connected @ {addr[0]}, {addr[1]}')
       else:
         conn.sendall(b"Username already in use.")
         return  # Don't continue if username is taken
@@ -262,21 +262,21 @@ def handle_client(conn, addr):
       request = conn.recv(1024)
       if not request:
         with locking:  # Added lock
-          if userName in clients:
-            del clients[userName]
-        print(f"User {userName} disconnected.")
+          if username in clients:
+            del clients[username]
+        print(f"User {username} disconnected.")
         break
 
       message = request.decode().strip()
-      handle_client_request(userName, conn, message)
+      handle_client_request(username, conn, message)
 
   except (ConnectionResetError, BrokenPipeError) as error:
     print(f"Connection error from {addr}: {error}")
   finally:  # connection cleanup on closure
     with locking:
-      if userName and userName in clients:
-        del clients[userName]
-    print(f"Cleaned up connection for {userName}")
+      if username and username in clients:
+        del clients[username]
+    print(f"Cleaned up connection for {username}")
 
 
 
@@ -311,6 +311,28 @@ def define_socket(hostname, ip, PORT):
         print(f"Server error: {error}")
 
 
+# Use storage proxy to retrieve old messages from former server instances
+def restore_topics():
+  topics = {}
+  old_messages = storage_proxy.get_messages()
+  for content in old_messages:
+    _id, timestamp, topic_name, username, message = content
+
+
+    if topic_name not in topics:
+      topics[topic_name] = {
+        "name": topic_name,
+        "messages": []
+      }
+    # add message to correct topic
+    topic = topics[topic_name]["messages"].append({
+        "timestamp": timestamp,
+        "username": username,
+        "message": message,
+    })
+  return topics
+
+
 
 # Server state
 running = True
@@ -331,7 +353,7 @@ def server():
 
   global topics
   try:
-    topics = storage_proxy.get_messages()
+    topics = restore_topics()
   except Exception as e:
     print(f"Warning: failed to load topics from storage proxy: {e}")
     topics = {}

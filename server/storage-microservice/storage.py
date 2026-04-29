@@ -34,9 +34,10 @@ def connect():
         db_version = cursor.fetchone()
         print(db_version)
 
-        return [conn, cursor]
+        return (conn, cursor)
     except (Exception, psycopg2.DatabaseError) as error:
         print(error)
+        return None
 
 
 def create_table(cur):
@@ -71,7 +72,6 @@ def set_message(cur, conn, message):
 def get_messages(cur):
   cur.execute('SELECT * FROM messages')
   data = cur.fetchall()
-  print(data) # Needs to be completed to return topics to server.
   return data
 
 # Disconnect from PostgreSQL
@@ -86,8 +86,13 @@ def disconnect(conn, cursor):
 
 if __name__ == '__main__':
   # PostgreSQL connection
-  [db, cursor] = connect()
-  create_table()
+  connection = connect()
+  if connection == None:
+    print("failed to connect to DB. Exiting.")
+    exit(1)
+
+  (db, cursor) = connection
+  create_table(cur=cursor)
   db.commit()
 
   # define server
