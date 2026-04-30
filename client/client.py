@@ -116,6 +116,7 @@ class Client:
 
         # process server response
         response = self.client_socket.recv(4096).decode()
+        print(response)
         data = json.loads(response)
         newsList = data["content"]
 
@@ -149,16 +150,16 @@ class Client:
                         message=f"Source {select_article['source']}\nTitle: {select_article['title']}\nPublish time: {select_article['publishTime']}\nDescription: {select_article['description']}",
                                     choices=[
                                         'Open chat room',
-                                        Choice(value=None, name='Return article list')
+                                        Choice(value=None, name='Return to article list')
                                     ],
                                     default=1
                     ).execute()
-
+                    print(selected_article) # Test
                     if selected_article != None:
                         
                         self.client_socket.sendall(json.dumps({
                         "action": "create_topic",
-                        "topic_name": new_subject
+                        "topic_name": select_article["title"]
                         }).encode())
 
                         join_response = json.loads(self.client_socket.recv(4096).decode())

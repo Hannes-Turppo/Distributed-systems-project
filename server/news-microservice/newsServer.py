@@ -1,6 +1,7 @@
 from xmlrpc.server import SimpleXMLRPCServer
 from xmlrpc.server import SimpleXMLRPCRequestHandler
 import requests
+import json
 
 class RequestHandler(SimpleXMLRPCRequestHandler):
     rpc_paths = ('/RPC2',)
@@ -38,8 +39,7 @@ with SimpleXMLRPCServer(('localhost', 8000), requestHandler=RequestHandler) as s
                 "description": article['description'],
                 "publishTime": article['publishedAt']
             })
-
-        return newslist
+        return json.dumps(newslist)
 
 
     server.register_function(getNews, 'getNews')

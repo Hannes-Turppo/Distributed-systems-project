@@ -61,7 +61,8 @@ def commands(server):
 # handle RPC calls to NewsServer
 def handle_news(keyword):
   with xmlrpc.client.ServerProxy("http://localhost:8000/RPC2") as proxy:
-    news = proxy.getNews(keyword)
+    response = proxy.getNews(keyword)
+    news = json.loads(response)
   return news
 
 
@@ -171,7 +172,7 @@ def handle_client_request(username, conn, message):
       if topic and username in topic.members:
         topic.members.remove(username)
         print(f"{username} left topic '{topic_name}'")
-      conn.sendall(json.dumps({"status": "left", "topic_name": topic_name}))
+      conn.sendall(json.dumps({"status": "left", "topic_name": topic_name}).encode())
 
 
     # Use news microservice to search news by keyword
@@ -273,6 +274,11 @@ def restore_topics():
   for content in old_messages:
     _id, timestamp, topic_name, username, message = content
 
+    # Convert DateTime to ISO string
+    if hasattr(timestamp, 'isoformat'):
+      timestamp = timestamp.isoformat()
+    else:
+      timestamp = str(timestamp)
 
     # if topic doesn't exist, create it
     if topic_name not in topics:
