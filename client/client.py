@@ -149,23 +149,25 @@ class Client:
                         message=f"Source {select_article['source']}\nTitle: {select_article['title']}\nPublish time: {select_article['publishTime']}\nDescription: {select_article['description']}",
                                     choices=[
                                         'Open chat room',
-                                        Choice(value=None, name='Return article list')
+                                        Choice(value=None, name='Return to article list')
                                     ],
                                     default=1
                     ).execute()
-
+                    print(selected_article) # Test
                     if selected_article != None:
                         
                         self.client_socket.sendall(json.dumps({
                         "action": "create_topic",
-                        "topic_name": new_subject
+                        "topic_name": select_article["title"]
                         }).encode())
 
                         join_response = json.loads(self.client_socket.recv(4096).decode())
-                        print(join_response)
-
-                        self.current_topic = new_subject
-                        self.openChatRoom()
+                        if join_response["status"] == "error":
+                            print(f"\n{join_response["message"]}")
+                        else:
+                            print(f"Created topic \'{join_response["topic_name"]}\'")
+                            self.current_topic = new_subject
+                            self.openChatRoom()
 
 
     # handle stopping the message receiver thread
