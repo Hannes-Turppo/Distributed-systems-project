@@ -134,13 +134,9 @@ class Client:
                 if select_article is None:
                     return
                 else:
-                    print(select_article)
 
                     selected_article = inquirer.select(
-                        message=f"Source {select_article['source']}\
-                            Title: {select_article['title']}\
-                                Publish time: {select_article['publishTime']}\
-                                    Description: {select_article['description']}",
+                        message=f"Source {select_article['source']}\nTitle: {select_article['title']}\nPublish time: {select_article['publishTime']}\nDescription: {select_article['description']}",
                                     choices=[
                                         'Open chat room',
                                         Choice(value=None, name='Return article list')
@@ -148,9 +144,8 @@ class Client:
                                     default=1
                     ).execute()
 
-                    if selected_article is None:
-                        break
-                    else:
+                    if selected_article != None:
+                        
                         self.client_socket.sendall(json.dumps({
                         "action": "create_topic",
                         "topic_name": new_subject
@@ -182,7 +177,7 @@ class Client:
                 self.leaveTopic()
                 break
             else:
-                break
+                self.menu()
 
 
     def sendMessage(self):
