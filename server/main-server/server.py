@@ -2,61 +2,8 @@ import xmlrpc.client
 import socket
 import threading
 import json
-# from redis import Redis
-import json
-import time
 from datetime import datetime, timezone
 
-
-
-# # Redis cache handling. no functionality provided and abandonet due to complexity
-# class RedisCache:
-#   def __init__(self, host='localhost', port=6379, db=0, forward_callback=None):
-#     try:
-#       # init redis components
-#       self.redis = Redis(host=host, port=port, db=db, decode_responses=True)
-#       self._stop_event = threading.Event()
-
-#       # populate with data from storage
-#       self.populate_cache()
-
-#     except Exception as e:
-#       print(f"Error initializing redis connection: {e}")
-
-
-# # pull old content from database to cache
-#   def populate_cache(self):
-#     old_data = storage_proxy.get_data()
-#     print(old_data)
-#     keys = old_data.keys()
-#     for topic in keys:
-#       self.redis.set(topic.name, topic.messages)
-#     return
-
-
-# # set_topic to redis cache for fast acces for new joiners and store into permanent storage.
-#   def set_topic(self, storage, topicName, content):
-#     try:
-#       self.redis.set(topicName, content)
-#       storage_proxy.set_data(topics)
-#       return True
-#     except Exception as e:
-#       print(f"Error while setting topic: {e}")
-#       return False
-
-
-# # when client connects to topic, get old messages from redis
-#   def get_topic(self, topicName):
-#     try:
-#       topic = self.redis.get(topicName)
-#       if not topic:
-#         return False
-#       else:
-#         return topic
-#     except Exception as e:
-#       print(f"Error while getting topic from Redis: {e}")
-#       return False
-  
 
 class Topic:
   def __init__(self, name):
@@ -231,7 +178,10 @@ def handle_client_request(username, conn, message):
     if action == "search_news":
       keyword = command.get("topic_name")
       news = handle_news(keyword)
-      conn.sendall(json.dumps(news).encode())
+      if news == False:
+        conn.sendall(json.dumps({"status": "error"}).encode())
+      else:
+        conn.sendall(json.dumps(news).encode())
 
 
   except Exception as error:
@@ -342,7 +292,6 @@ running = True
 locking = threading.Lock()
 clients = {}  # Dict: k: username, v: socket connection
 topics = {}   # Dict: k: topicname, v: list of messages
-# cache = RedisCache()
 storage_proxy = xmlrpc.client.ServerProxy("http://localhost:8080/")
 
 

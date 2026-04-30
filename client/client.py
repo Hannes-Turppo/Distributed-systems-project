@@ -82,8 +82,11 @@ class Client:
                 self.current_topic = topic
                 print(f"Joined topic: {topic}\n")
 
+                # print message history
+                print("------ Message history ------")
                 for msg in join_data.get("messages", []):
                     print(f"{msg.get("username")}: {msg.get("message")}")
+                print("------ Message history ------")
 
                 self.openChatRoom()
                 break
@@ -115,8 +118,8 @@ class Client:
 
         data = json.loads(response)
 
-        if 'error' in response:
-            print('Error while receiving news')
+        if data["status"] and data["status"] == "error":
+            print(f'Error while receiving news')
             return
         else:
             choices = [

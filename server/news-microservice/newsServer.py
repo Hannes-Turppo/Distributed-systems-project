@@ -25,7 +25,7 @@ with SimpleXMLRPCServer(('localhost', 8000), requestHandler=RequestHandler) as s
         
         if content.get('status') == 'error':
             print(content.get('code'))
-            return 'Error: unable to get news.'
+            return False
         else:
             print(f"Fetched news for topic: {topic}")
 
