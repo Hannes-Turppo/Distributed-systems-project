@@ -8,10 +8,14 @@ import threading
 class Client:
 
     def __init__(self, HOST, PORT):
+        # handle receiver thread and it's shutdown
+        self.stop_receiving = threading.Event()
+        self.receiver_thread = None
 
         self.name = inquirer.text(message='What is your username?').execute()
 
         self.client_socket = socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
+        self.client_socket.settimeout(1)
         try:
             self.client_socket.connect((HOST, PORT))
             self.client_socket.send(self.name.encode())
@@ -22,6 +26,8 @@ class Client:
             print(err)
 
         self.Menu()
+
+        
 
     def Menu(self):
 
@@ -74,10 +80,10 @@ class Client:
 
             if join_data.get("status") == "joined":
                 self.current_topic = topic
-                print(f"Joined topic: {topic}")
+                print(f"Joined topic: {topic}\n")
 
                 for msg in join_data.get("messages", []):
-                    print(msg)
+                    print(f"{msg.get("username")}: {msg.get("message")}")
 
                 self.openChatRoom()
                 break
@@ -157,15 +163,24 @@ class Client:
                         self.current_topic = new_subject
                         self.openChatRoom()
 
+
+    # handle stopping the message receiver thread
+    def stopReceiverThread(self):
+        self.stop_receiving.set()
+        if self.receiver_thread and self.receiver_thread.is_alive():
+            self.receiver_thread.join(timeout=1)
+
+
     def openChatRoom(self):
-        threading.Thread(target=self.receiveMessage).start()
+        self.stop_receiving.clear()
+        self.receiver_thread = threading.Thread(target=self.receiveMessage, daemon=True)
+        self.receiver_thread.start()
 
         while True:
             chat = inquirer.select(
                 message='Chat options',
                 choices=[
                     'Send message',
-                    'Stop following topic',
                     Choice(value=None, name='Return main menu')
                 ],
                 default=1
@@ -173,11 +188,10 @@ class Client:
 
             if chat == 'Send message':
                 self.sendMessage()
-            elif chat == 'Stop following topic':
+            else:
+                self.stopReceiverThread()
                 self.leaveTopic()
                 break
-            else:
-                self.menu()
 
 
     def sendMessage(self):
@@ -192,10 +206,8 @@ class Client:
             "message": message
         }).encode())
 
-
     def receiveMessage(self):
-        
-        while True:
+        while not self.stop_receiving.is_set():
             try:
                 data = self.client_socket.recv(4096)
                 if not data:
@@ -206,8 +218,10 @@ class Client:
                 if message.get("type") == "topic_message":
                     print(
                         f"\n[{message['topic_name']}] "
-                        f"{message['from']}: {message['message']}"
+                        f"{message['username']}: {message['message']}"
                     )
+            except socket.timeout:
+                continue
             except:
                 break
 

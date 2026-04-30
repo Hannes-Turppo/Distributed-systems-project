@@ -224,7 +224,7 @@ def handle_client_request(username, conn, message):
       if topic and username in topic.members:
         topic.members.remove(username)
         print(f"{username} left topic '{topic_name}'")
-      conn.sendall(b"Left topic")
+      conn.sendall(json.dumps({"status": "left", "topic_name": topic_name}))
 
 
     # Use news microservice to search news by keyword
