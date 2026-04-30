@@ -114,9 +114,10 @@ class Client:
             "topic_name": new_subject
         }).encode())
 
+        # process server response
         response = self.client_socket.recv(4096).decode()
-
         data = json.loads(response)
+        newsList = data["content"]
 
         if data["status"] and data["status"] == "error":
             print(f'Error while receiving news')
@@ -127,7 +128,7 @@ class Client:
                     value=article,
                     name=f"Source: {article['source']}\nTitle: {article['title']}"
                 )
-                for article in data
+                for article in newsList
             ]
 
             choices.append(Choice(value=None, name='Return main menu'))

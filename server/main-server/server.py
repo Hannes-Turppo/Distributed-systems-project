@@ -179,9 +179,9 @@ def handle_client_request(username, conn, message):
       keyword = command.get("topic_name")
       news = handle_news(keyword)
       if news == False:
-        conn.sendall(json.dumps({"status": "error"}).encode())
+        conn.sendall(json.dumps({"status": "error", "content": ""}).encode())
       else:
-        conn.sendall(json.dumps(news).encode())
+        conn.sendall(json.dumps({"status": "OK", "content": news}).encode())
 
 
   except Exception as error:

@@ -22,7 +22,6 @@ with SimpleXMLRPCServer(('localhost', 8000), requestHandler=RequestHandler) as s
 
         response = requests.get(url, params=params)
         content = response.json()
-        
         if content.get('status') == 'error':
             print(content.get('code'))
             return False
@@ -39,7 +38,6 @@ with SimpleXMLRPCServer(('localhost', 8000), requestHandler=RequestHandler) as s
                 "description": article['description'],
                 "publishTime": article['publishedAt']
             })
-
 
         return newslist
 
