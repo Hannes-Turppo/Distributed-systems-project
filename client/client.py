@@ -116,7 +116,6 @@ class Client:
 
         # process server response
         response = self.client_socket.recv(4096).decode()
-        print(response)
         data = json.loads(response)
         newsList = data["content"]
 
@@ -163,10 +162,12 @@ class Client:
                         }).encode())
 
                         join_response = json.loads(self.client_socket.recv(4096).decode())
-                        print(join_response)
-
-                        self.current_topic = new_subject
-                        self.openChatRoom()
+                        if join_response["status"] == "error":
+                            print(f"\n{join_response["message"]}")
+                        else:
+                            print(f"Created topic \'{join_response["topic_name"]}\'")
+                            self.current_topic = new_subject
+                            self.openChatRoom()
 
 
     # handle stopping the message receiver thread

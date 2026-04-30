@@ -91,7 +91,7 @@ def handle_client_request(username, conn, message):
       name = command.get("topic_name")
 
       if name in topics:
-        conn.sendall(b"Error: Topic already exists.")
+        conn.sendall(json.dumps({"status":"error", "message": "Topic already exists"}).encode())
       else:
         topics[name] = Topic(name)
         topics[name].add_member(username)
