@@ -13,7 +13,7 @@ with SimpleXMLRPCServer(('localhost', 8000), requestHandler=RequestHandler) as s
 
         url = 'https://newsapi.org/v2/everything?'
         params = {
-            'q': f"{topic}",
+            'q': f'{topic}',
             'sortBy': 'popularity',
             'pageSize': 10,
             'language': 'en',

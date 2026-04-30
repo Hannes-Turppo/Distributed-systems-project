@@ -82,7 +82,10 @@ class Topic:
   def add_member(self, username):
     if username not in self.members:
       self.members.append(username)
-    return True
+      return True
+    else:
+      return False
+
 
 
 
@@ -151,10 +154,10 @@ def handle_client_request(username, conn, message):
     # Join existing topic
     if action == "join_topic":
       name = command.get("topic_name")
-      topic = topics.get(name)
-      if not topic:
+      if name not in topics.keys():
         conn.sendall(json.dumps({"status": "error", "message": "Topic not found"}).encode())
         return
+      topic = topics.get(name)
       
       # Add user to topic members
       topic.add_member(username)
@@ -176,7 +179,7 @@ def handle_client_request(username, conn, message):
       # form message data
       topic_name = command.get("topic_name")
       msg = command.get("message")
-      timestamp = datetime.now(timezone.utc)
+      timestamp = datetime.now(timezone.utc).isoformat()
 
       # find topic
       topic = topics.get(topic_name)
@@ -187,7 +190,7 @@ def handle_client_request(username, conn, message):
       # Add message to server memory and persistent message history
       topic.add_message(timestamp, username, msg)
       res = storage_proxy.set_message({
-        "timestamp": timestamp.isoformat(),
+        "timestamp": timestamp,
         "topic_name": topic_name,
         "username": username,
         "message": msg
@@ -321,17 +324,15 @@ def restore_topics():
     _id, timestamp, topic_name, username, message = content
 
 
+    # if topic doesn't exist, create it
     if topic_name not in topics:
-      topics[topic_name] = {
-        "name": topic_name,
-        "messages": []
-      }
+      topics[topic_name] = Topic(topic_name)
     # add message to correct topic
-    topic = topics[topic_name]["messages"].append({
-        "timestamp": timestamp,
-        "username": username,
-        "message": message,
-    })
+    topics[topic_name].add_message(
+        timestamp = timestamp,
+        username = username,
+        message = message
+    )
   return topics
 
 

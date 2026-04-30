@@ -6,11 +6,11 @@
 
 ```ini
 [postgresql]
-host=[your host name, ex: localhost]
-database=[name of the running DB you want to use]
-user=[PostgreSQL username that has acces to the DB]
-password=[your PostgreSQL user password]
-port=[the port your DB is running on. PgSQL default is 5432]
+host=your host name, ex: localhost
+database=name of the running DB you want to use
+user=PostgreSQL username that has acces to the DB
+password=your PostgreSQL user password
+port=the port your DB is running on. PgSQL default is 5432
 ```
 
 Now when you run the microservice as storage.py, you should have a working connection to PostgreSQL 
